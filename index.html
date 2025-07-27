@@ -14,6 +14,22 @@
   <a href="./src/pages/ipmap.html">IP Mapping Tool</a>
 </div>
 <body>
+  <a href="https://login.quickbase.com/nav/app/9kaw8phg/table/6ewwzuuj/action/td">Quickbase Formula Reference App</a>
+  <br>
+  <a href="https://helpv2.quickbase.com/hc/en-us">Quickbase Help Documentation</a>
   
+  <br>
+  <input type="text" id="search" placeholder="Search Quickbase Help documentation">
+  <br>
+  <button onclick="searchHelp()">Search</button>
+  <div id="searchResults"></div>
+  <script>
+    function searchHelp() {
+      const searchTerm = document.getElementById('search').value;
+      const searchResults = document.getElementById('searchResults');
+      //in a new tab
+      window.open(`https://helpv2.quickbase.com/hc/en-us/search?query=${searchTerm}`, '_blank');
+    }
+  </script>
 </body>
 </html> 

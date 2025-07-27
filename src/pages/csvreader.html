@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>CSV Reader</title>
+  <style>
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    th {
+      background-color: #f2f2f2;
+      font-weight: bold;
+    }
+    tr:nth-child(even) {
+      background-color: #f9f9f9;
+    }
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+  </style>
+</head>
+<body>
+  <h1>CSV Reader</h1>
+  <label for="csvFile">Choose a csv file:</label>
+  <input type="file" id="csvFile" name="csvFile" accept=".csv" />
+  <button onclick="readCsvFile()">Read CSV File</button>
+  <div id="csvData"></div>
+  <script>
+    function readCsvFile() {
+      const fileInput = document.getElementById('csvFile');
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        alert('Please select a file first.');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const csvData = e.target.result;
+        const rows = csvData.split('\n').filter(row => row.trim() !== '');
+        const data = rows.map(row => row.split(','));
+        
+        if (data.length === 0) {
+          document.getElementById('csvData').innerHTML = '<p>No data found in CSV file.</p>';
+          return;
+        }
+        
+        // Create table HTML
+        let tableHTML = '<table>';
+        
+        // Add header row (first row)
+        tableHTML += '<thead><tr>';
+        data[0].forEach(header => {
+          tableHTML += `<th>${header.trim()}</th>`;
+        });
+        tableHTML += '</tr></thead>';
+        
+        // Add data rows
+        tableHTML += '<tbody>';
+        for (let i = 1; i < data.length; i++) {
+          tableHTML += '<tr>';
+          data[i].forEach(cell => {
+            tableHTML += `<td>${cell.trim()}</td>`;
+          });
+          tableHTML += '</tr>';
+        }
+        tableHTML += '</tbody></table>';
+        
+        document.getElementById('csvData').innerHTML = tableHTML;
+      };
+      
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html>

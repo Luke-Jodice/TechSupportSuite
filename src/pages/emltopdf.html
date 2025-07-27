@@ -1,0 +1,395 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EML to PDF</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .file-input {
+      margin: 20px 0;
+    }
+    .file-input input[type="file"] {
+      padding: 10px;
+      border: 2px dashed #ddd;
+      border-radius: 4px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .convert-btn {
+      background: #4CAF50;
+      color: white;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      width: 100%;
+      margin: 10px 0;
+    }
+    .convert-btn:hover {
+      background: #45a049;
+    }
+    .convert-btn:disabled {
+      background: #cccccc;
+      cursor: not-allowed;
+    }
+    .email-preview {
+      border: 1px solid #ddd;
+      padding: 20px;
+      margin: 20px 0;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      border-radius: 4px;
+    }
+    .email-header {
+      border-bottom: 2px solid #eee;
+      padding-bottom: 15px;
+      margin-bottom: 20px;
+    }
+    .email-header h2 {
+      margin: 0 0 15px 0;
+      color: #333;
+      font-size: 24px;
+    }
+    .email-meta {
+      font-size: 14px;
+      color: #666;
+      line-height: 1.6;
+    }
+    .email-meta strong {
+      color: #333;
+    }
+    .email-body {
+      line-height: 1.6;
+      color: #333;
+    }
+    .success-message {
+      color: #4CAF50;
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+      background: #e8f5e8;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .error-message {
+      color: #f44336;
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+      background: #ffebee;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .loading {
+      text-align: center;
+      color: #666;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>EML to PDF Converter</h1>
+    
+    <div class="file-input">
+      <label for="emlFile">Choose an EML file:</label>
+      <input type="file" id="emlFile" name="emlFile" accept=".eml" />
+    </div>
+    
+    <button onclick="convertEmlToPdf()" id="convertBtn" class="convert-btn">Convert EML to PDF</button>
+    
+    <div id="pdfData"></div>
+  </div>
+  
+  <script>
+    // Check if libraries are loaded
+    function checkLibraries() {
+      if (typeof window.jsPDF === 'undefined' && typeof window.jspdf !== 'undefined') {
+        window.jsPDF = window.jspdf.jsPDF;
+      }
+      
+      if (typeof window.jsPDF === 'undefined') {
+        throw new Error('jsPDF library not loaded. Please check your internet connection.');
+      }
+      
+      if (typeof window.html2canvas === 'undefined') {
+        throw new Error('html2canvas library not loaded. Please check your internet connection.');
+      }
+    }
+    
+    // Base64 decoding function
+    function decodeBase64(str) {
+      try {
+        // Handle UTF-8 encoded base64
+        return decodeURIComponent(escape(atob(str)));
+      } catch (e) {
+        try {
+          // Fallback to simple base64 decode
+          return atob(str);
+        } catch (e2) {
+          console.warn('Failed to decode base64:', e2);
+          return str; // Return original if decoding fails
+        }
+      }
+    }
+    
+    // Check if content is base64 encoded
+    function isBase64(str) {
+      try {
+        return btoa(atob(str)) === str;
+      } catch (e) {
+        return false;
+      }
+    }
+    
+    // Parse MIME content with base64 decoding
+    function parseMimeContent(content, contentType) {
+      if (!content) return '';
+      
+      // Check if content is base64 encoded
+      if (contentType && contentType.toLowerCase().includes('base64')) {
+        return decodeBase64(content);
+      }
+      
+      // Check if content looks like base64 (alphanumeric + / + =)
+      if (isBase64(content.trim())) {
+        return decodeBase64(content.trim());
+      }
+      
+      return content;
+    }
+    
+    function parseEmlContent(emlData) {
+      // Enhanced EML parser with base64 decoding
+      const lines = emlData.split('\n');
+      let headers = {};
+      let body = '';
+      let inBody = false;
+      let currentHeader = '';
+      let currentValue = '';
+      let contentType = '';
+      let contentEncoding = '';
+      let boundary = '';
+      
+      for (let line of lines) {
+        if (!inBody) {
+          if (line.trim() === '') {
+            inBody = true;
+            continue;
+          }
+          
+          // Handle multi-line headers
+          if (line.startsWith(' ') || line.startsWith('\t')) {
+            // Continuation of previous header
+            currentValue += ' ' + line.trim();
+            headers[currentHeader.toLowerCase()] = currentValue.trim();
+          } else {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+              currentHeader = line.substring(0, colonIndex).trim();
+              currentValue = line.substring(colonIndex + 1).trim();
+              headers[currentHeader.toLowerCase()] = currentValue;
+              
+              // Track important headers for decoding
+              if (currentHeader.toLowerCase() === 'content-type') {
+                contentType = currentValue;
+              }
+              if (currentHeader.toLowerCase() === 'content-transfer-encoding') {
+                contentEncoding = currentValue;
+              }
+              if (currentHeader.toLowerCase() === 'content-type' && currentValue.includes('boundary=')) {
+                boundary = currentValue.split('boundary=')[1].replace(/"/g, '');
+              }
+            }
+          }
+        } else {
+          body += line + '\n';
+        }
+      }
+      
+      // Decode the body content
+      let decodedBody = body.trim();
+      
+      // Handle base64 encoded content
+      if (contentEncoding && contentEncoding.toLowerCase().includes('base64')) {
+        decodedBody = parseMimeContent(decodedBody, 'base64');
+      } else if (isBase64(decodedBody)) {
+        decodedBody = parseMimeContent(decodedBody, 'base64');
+      }
+      
+      // Handle quoted-printable encoding
+      if (contentEncoding && contentEncoding.toLowerCase().includes('quoted-printable')) {
+        decodedBody = decodeQuotedPrintable(decodedBody);
+      }
+      
+      return { headers, body: decodedBody };
+    }
+    
+    // Decode quoted-printable encoding
+    function decodeQuotedPrintable(str) {
+      return str.replace(/=\r?\n/g, '') // Remove soft line breaks
+                .replace(/=([0-9A-F]{2})/gi, (match, hex) => {
+                  return String.fromCharCode(parseInt(hex, 16));
+                });
+    }
+    
+    function createEmailHTML(emailData) {
+      const { headers, body } = emailData;
+      
+      // Clean and format headers
+      const subject = headers.subject || 'No Subject';
+      const from = headers.from || 'Unknown';
+      const to = headers.to || 'Unknown';
+      const date = headers.date || 'Unknown';
+      const cc = headers.cc || '';
+      
+      // Clean up the body text
+      let cleanBody = body;
+      
+      // Remove common email artifacts
+      cleanBody = cleanBody.replace(/--[a-zA-Z0-9]+/g, ''); // Remove MIME boundaries
+      cleanBody = cleanBody.replace(/Content-Type:.*?\r?\n/gi, ''); // Remove content-type headers
+      cleanBody = cleanBody.replace(/Content-Transfer-Encoding:.*?\r?\n/gi, ''); // Remove encoding headers
+      cleanBody = cleanBody.replace(/Content-Disposition:.*?\r?\n/gi, ''); // Remove disposition headers
+      cleanBody = cleanBody.replace(/MIME-Version:.*?\r?\n/gi, ''); // Remove MIME version
+      
+      // Clean up extra whitespace
+      cleanBody = cleanBody.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      cleanBody = cleanBody.replace(/\n{3,}/g, '\n\n'); // Remove excessive line breaks
+      
+      return `
+        <div class="email-preview">
+          <div class="email-header">
+            <h2>${subject}</h2>
+            <div class="email-meta">
+              <strong>From:</strong> ${from}<br>
+              <strong>To:</strong> ${to}<br>
+              <strong>Date:</strong> ${date}<br>
+              ${cc ? `<strong>CC:</strong> ${cc}<br>` : ''}
+            </div>
+          </div>
+          <div class="email-body">
+            ${cleanBody.replace(/\n/g, '<br>')}
+          </div>
+        </div>
+      `;
+    }
+    
+    function convertEmlToPdf() {
+      const fileInput = document.getElementById('emlFile');
+      const file = fileInput.files[0];
+      const convertBtn = document.getElementById('convertBtn');
+      const pdfData = document.getElementById('pdfData');
+      
+      if (!file) {
+        pdfData.innerHTML = '<div class="error-message">Please select a file first.</div>';
+        return;
+      }
+      
+      // Show loading state
+      convertBtn.disabled = true;
+      convertBtn.textContent = 'Converting...';
+      pdfData.innerHTML = '<div class="loading">Processing EML file...</div>';
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          // Check if libraries are available
+          checkLibraries();
+          
+          const emlData = e.target.result;
+          const emailData = parseEmlContent(emlData);
+          const emailHTML = createEmailHTML(emailData);
+          
+          // Display preview
+          pdfData.innerHTML = emailHTML + '<div class="loading">Generating PDF...</div>';
+          
+          // Convert to PDF
+          const emailElement = document.querySelector('.email-preview');
+          
+          html2canvas(emailElement, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            backgroundColor: '#ffffff',
+            logging: false
+          }).then(canvas => {
+            try {
+              const imgData = canvas.toDataURL('image/png');
+              const pdf = new jsPDF('p', 'mm', 'a4');
+              const imgWidth = 210;
+              const pageHeight = 295;
+              const imgHeight = canvas.height * imgWidth / canvas.width;
+              let heightLeft = imgHeight;
+              
+              let position = 0;
+              
+              pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+              heightLeft -= pageHeight;
+              
+              while (heightLeft >= 0) {
+                position = heightLeft - imgHeight;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+                heightLeft -= pageHeight;
+              }
+              
+              // Download the PDF
+              const fileName = file.name.replace('.eml', '.pdf');
+              pdf.save(fileName);
+              
+              // Show success message
+              pdfData.innerHTML = emailHTML + 
+                '<div class="success-message">✓ PDF generated successfully! Check your downloads folder.</div>';
+              
+            } catch (pdfError) {
+              console.error('Error creating PDF:', pdfError);
+              pdfData.innerHTML = emailHTML + 
+                '<div class="error-message">Error creating PDF: ' + pdfError.message + '</div>';
+            }
+            
+            // Reset button
+            convertBtn.disabled = false;
+            convertBtn.textContent = 'Convert EML to PDF';
+            
+          }).catch(error => {
+            console.error('Error generating PDF:', error);
+            pdfData.innerHTML = emailHTML + 
+              '<div class="error-message">Error generating PDF: ' + error.message + '</div>';
+            convertBtn.disabled = false;
+            convertBtn.textContent = 'Convert EML to PDF';
+          });
+          
+        } catch (error) {
+          console.error('Error converting EML to PDF:', error);
+          pdfData.innerHTML = '<div class="error-message">Error: ' + error.message + '</div>';
+          convertBtn.disabled = false;
+          convertBtn.textContent = 'Convert EML to PDF';
+        }
+      };
+      
+      reader.readAsText(file);
+    }
+  </script>
+</body>
+</html> -->

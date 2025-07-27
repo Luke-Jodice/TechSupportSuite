@@ -12,29 +12,8 @@
 </head>
 <body>
   <h1>Test IP Mapping Tool</h1>
-
-  <!-- <section>
-    <h2>Test iptoNumber</h2>
-    <label>IP Address:
-      <input type="text" id="ipInput" value="1.1.1.1">
-    </label>
-    <button onclick="testIpToNumber()">Convert to Number</button>
-    <div class="result" id="ipToNumberResult"></div>
-  </section> -->
-
-  <!-- <section>
-    <h2>Test matchIp</h2>
-    <label>IP Address:
-      <input type="text" id="matchIpInput" value="1.1.1.1">
-    </label>
-    <label>IP Range (start-end):
-      <input type="text" id="ipRangeInput" value="1.1.1.0-1.1.1.255">
-    </label>
-    <button onclick="testMatchIp()">Check if in Range</button>
-    <div class="result" id="matchIpResult"></div>
-  </section> -->
-
-  <script src="ip-matcher.js"></script>
+<a href="../../index.html">Back to homepage</a>
+  <script src="../ip-matcher.js"></script>
 
 <div>
   <h3>IP listing</h3>
@@ -45,10 +24,10 @@
 <div>
   <h3>IP cidr</h3>
   <textarea id="cidrListing" rows="10" cols="50"></textarea>
-  <button onclick="groupIpsByCidr()">Group IPs by CIDR</button>
 </div>
+<button onclick="groupIpsByCidr()">Group IPs by CIDR</button>
 
-<div>
+<div style="float: right; margin-top: -20em; margin-right: 40em;">
   <h3>Grouping Result</h3>
   <pre id="groupingResult"></pre>
 </div>
