@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>IP Mapping Tool Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2em; }
+    label { display: block; margin-top: 1em; }
+    input, button { margin-top: 0.5em; }
+    .result { margin-top: 1em; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Test IP Mapping Tool</h1>
+
+  <!-- <section>
+    <h2>Test iptoNumber</h2>
+    <label>IP Address:
+      <input type="text" id="ipInput" value="1.1.1.1">
+    </label>
+    <button onclick="testIpToNumber()">Convert to Number</button>
+    <div class="result" id="ipToNumberResult"></div>
+  </section> -->
+
+  <!-- <section>
+    <h2>Test matchIp</h2>
+    <label>IP Address:
+      <input type="text" id="matchIpInput" value="1.1.1.1">
+    </label>
+    <label>IP Range (start-end):
+      <input type="text" id="ipRangeInput" value="1.1.1.0-1.1.1.255">
+    </label>
+    <button onclick="testMatchIp()">Check if in Range</button>
+    <div class="result" id="matchIpResult"></div>
+  </section> -->
+
+  <script src="ip-matcher.js"></script>
+
+<div>
+  <h3>IP listing</h3>
+  <textarea id="ipListing" rows="10" cols="50"></textarea>
+  <!-- <button onclick="listcreate()">Test IP Listing</button> -->
+</div>
+
+<div>
+  <h3>IP cidr</h3>
+  <textarea id="cidrListing" rows="10" cols="50"></textarea>
+  <button onclick="groupIpsByCidr()">Group IPs by CIDR</button>
+</div>
+
+<div>
+  <h3>Grouping Result</h3>
+  <pre id="groupingResult"></pre>
+</div>
+
+<script>
+    function testIpToNumber() {
+      const ip = document.getElementById('ipInput').value;
+      try {
+        const num = window.iptoNumber(ip);
+        document.getElementById('ipToNumberResult').textContent = `Number: ${num}`;
+      } catch (e) {
+        document.getElementById('ipToNumberResult').textContent = 'Invalid IP address.';
+      }
+    }
+
+    function testMatchIp() {
+      const ip = document.getElementById('matchIpInput').value;
+      const range = document.getElementById('ipRangeInput').value;
+      try {
+        const result = window.matchIp(ip, range);
+        document.getElementById('matchIpResult').textContent = result ? 'IP is in range.' : 'IP is NOT in range.';
+      } catch (e) {
+        document.getElementById('matchIpResult').textContent = 'Invalid input.';
+      }
+    }
+
+    function listcreate(){
+      const ipListing = document.getElementById('ipListing').value;
+      const ipList = ipListing.split('\n');
+      console.log(ipList);
+    }
+
+    function groupIpsByCidr() {
+      const ipListing = document.getElementById('ipListing').value.trim();
+      const cidrListing = document.getElementById('cidrListing').value.trim();
+      const ipList = ipListing ? ipListing.split(/\r?\n/).map(ip => ip.trim()).filter(Boolean) : [];
+      const cidrList = cidrListing ? cidrListing.split(/\r?\n/).map(cidr => cidr.trim()).filter(Boolean) : [];
+
+      // Prepare CIDR ranges
+      const cidrRanges = cidrList.map(cidr => {
+        try {
+          const { startIpNum, endIpNum } = window.generaterangefromcidr(cidr);
+          return { cidr, startIpNum, endIpNum };
+        } catch (e) {
+          return null;
+        }
+      }).filter(Boolean);
+
+      // Grouping
+      const groups = {};
+      const unmatched = [];
+
+      ipList.forEach(ip => {
+        const ipNum = window.iptoNumber(ip);
+        let matched = false;
+        for (const range of cidrRanges) {
+          if (ipNum >= range.startIpNum && ipNum <= range.endIpNum) {
+            if (!groups[range.cidr]) groups[range.cidr] = [];
+            groups[range.cidr].push(ip);
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          unmatched.push(ip);
+        }
+      });
+
+      // Prepare output
+      let output = '';
+      for (const cidr of Object.keys(groups)) {
+        output += `CIDR: ${cidr}\n`;
+        output += groups[cidr].map(ip => `  - ${ip}`).join('\n') + '\n';
+      }
+      if (unmatched.length) {
+        output += 'Unmatched:\n';
+        output += unmatched.map(ip => `  - ${ip}`).join('\n') + '\n';
+      }
+      document.getElementById('groupingResult').textContent = output || 'No IPs or CIDRs provided.';
+    }
+
+  </script>
+</body>
+</html> 

@@ -1,0 +1,135 @@
+# IP Mapping App Deployment Guide (JavaScript Version)
+# Using Docker and AWS
+
+## Step 1: Set Up Project Structure
+1. Create project directory:
+   mkdir ip-mapper-js
+   cd ip-mapper-js
+
+2. Initialize Node.js project:
+   npm init -y
+
+3. Create these files:
+   - src/
+     - index.js (main application)
+     - ip-matcher.js (IP matching logic)
+   - Dockerfile
+   - docker-compose.yml (optional for local testing)
+   - .dockerignore
+   - README.md
+
+## Step 2: Implement IP Matching Logic (src/ip-matcher.js)
+1. Install required package:
+   npm install ip-cidr
+
+2. Create IP matching functions:
+   - loadIpMaps(): Process IP maps configuration
+   - findMatches(): Check IPs against CIDR ranges
+   - Use ip-cidr package for CIDR checks
+
+## Step 3: Build Web Service (src/index.js)
+1. Install Express:
+   npm install express
+
+2. Create Express server with POST endpoint:
+   - Endpoint: /api/match
+   - Accepts JSON: { ips: [], ipMaps: {} }
+   - Returns: { results: { "1.2.3.4": ["map1"] } }
+
+## Step 4: Create package.json
+Ensure it includes:
+   "scripts": {
+     "start": "node src/index.js",
+     "dev": "nodemon src/index.js"
+   },
+   "dependencies": {
+     "express": "^4.18.2",
+     "ip-cidr": "^3.1.1"
+   }
+
+## Step 5: Create Dockerfile
+Use this configuration:
+   FROM node:18-alpine
+   WORKDIR /app
+   COPY package*.json ./
+   RUN npm install
+   COPY . .
+   EXPOSE 3000
+   CMD ["npm", "start"]
+
+## Step 6: Add .dockerignore
+node_modules
+npm-debug.log
+.env
+
+## Step 7: Build and Test Locally
+1. Build image:
+   docker build -t ip-mapper-js .
+
+2. Run container:
+   docker run -p 3000:3000 ip-mapper-js
+
+3. Test with curl:
+   curl -X POST http://localhost:3000/api/match \
+   -H "Content-Type: application/json" \
+   -d '{"ips": ["8.8.8.8"], "ipMaps": {"google": ["8.8.8.0/24"]}}'
+
+## Step 8: Set Up AWS ECR
+1. Create ECR repository:
+   aws ecr create-repository --repository-name ip-mapper-js
+
+2. Authenticate Docker:
+   aws ecr get-login-password | docker login --username AWS --password-stdin [account-id].dkr.ecr.[region].amazonaws.com
+
+## Step 9: Push Image to ECR
+1. Tag your image:
+   docker tag ip-mapper-js:latest [account-id].dkr.ecr.[region].amazonaws.com/ip-mapper-js:latest
+
+2. Push image:
+   docker push [account-id].dkr.ecr.[region].amazonaws.com/ip-mapper-js:latest
+
+## Step 10: Deploy to AWS
+Option A: ECS Fargate (recommended)
+1. Create ECS cluster
+2. Create task definition pointing to your ECR image
+3. Configure service with:
+   - CPU: 0.5 vCPU
+   - Memory: 1GB
+   - Port: 3000
+
+Option B: AWS App Runner
+1. Create service from container registry
+2. Set port to 3000
+3. Enable auto-scaling
+
+## Step 11: Configure Networking
+1. Set security group to allow port 3000
+2. Add Application Load Balancer if needed
+3. Configure health check at /health
+
+## Step 12: Add Monitoring
+1. Set up CloudWatch logs
+2. Configure alerts for errors
+3. Monitor CPU/memory usage
+
+## JavaScript Implementation Tips
+1. Sample IP matching function:
+   const { IPCIDR } = require('ip-cidr');
+   
+   function isIpInCidr(ip, cidr) {
+     return new IPCIDR(cidr).contains(ip);
+   }
+
+2. Sample Express endpoint:
+   app.post('/api/match', (req, res) => {
+     const { ips, ipMaps } = req.body;
+     // Implement matching logic
+     res.json({ results });
+   });
+
+## Optional Enhancements
+1. Add TypeScript support
+2. Implement Redis caching
+3. Add Swagger documentation
+4. Create React frontend
+5. Set up Jest tests
