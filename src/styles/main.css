@@ -1,0 +1,8 @@
+#main div
+{
+    padding-bottom: 2em;
+}
+body { font-family: Arial, sans-serif; margin: 2em; }
+label { display: block; margin-top: 1em; }
+input, button { margin-top: 0.5em; }
+.result { margin-top: 1em; font-weight: bold; }
